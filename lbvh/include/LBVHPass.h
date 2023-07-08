@@ -18,8 +18,12 @@ namespace engine {
 
         struct PushConstantsMortonCodes {
             uint32_t g_num_elements;
-            glm::ivec3 g_min; // TODO: padding?
-            glm::ivec3 g_max;
+            float g_min_x;
+            float g_min_y;
+            float g_min_z;
+            float g_max_x;
+            float g_max_y;
+            float g_max_z;
         };
         PushConstantsMortonCodes m_pushConstantsMortonCodes{};
 

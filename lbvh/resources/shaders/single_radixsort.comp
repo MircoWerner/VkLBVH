@@ -103,7 +103,7 @@ void main() {
             }
             barrier();
 
-            uint element_in = 0;
+            MortonCodeElement element_in;
             uint binID = 0;
             uint binOffset = 0;
             if (ID < g_num_elements) {

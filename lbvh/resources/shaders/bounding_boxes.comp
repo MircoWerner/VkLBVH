@@ -17,8 +17,8 @@ struct LBVHNode {
     int right;
     uint primitiveIdx;
     uint propertyIdx;
-    ivec4 aabbMin;
-    ivec4 aabbMax;
+    vec4 aabbMin;
+    vec4 aabbMax;
 };
 
 /*
@@ -46,7 +46,7 @@ layout (std430, set = 3, binding = 1) buffer lbvh_construction_infos {
     LBVHConstructionInfo g_lbvh_construction_infos[];
 };
 
-void aabbUnion(ivec4 minA, ivec4 maxA, ivec4 minB, ivec4 maxB, out ivec4 minAABB, out ivec4 maxAABB) {
+void aabbUnion(vec4 minA, vec4 maxA, vec4 minB, vec4 maxB, out vec4 minAABB, out vec4 maxAABB) {
     minAABB = min(minA, minB);
     maxAABB = max(maxA, maxB);
 }

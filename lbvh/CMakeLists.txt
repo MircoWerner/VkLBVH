@@ -12,7 +12,7 @@ set(PROJECT_SOURCES
 
 add_executable(lbvhexample ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 
-target_link_libraries(lbvhexample Vulkan::Vulkan enginecore spirv-reflect)
+target_link_libraries(lbvhexample Vulkan::Vulkan enginecore spirv-reflect tinyobjloader)
 
 target_include_directories(lbvhexample
         PUBLIC

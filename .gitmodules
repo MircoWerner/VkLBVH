@@ -1,3 +1,6 @@
 [submodule "lib/SPIRV-Reflect"]
 	path = lib/SPIRV-Reflect
 	url = git@github.com:KhronosGroup/SPIRV-Reflect.git
+[submodule "lib/tinyobjloader"]
+	path = lib/tinyobjloader
+	url = git@github.com:tinyobjloader/tinyobjloader.git

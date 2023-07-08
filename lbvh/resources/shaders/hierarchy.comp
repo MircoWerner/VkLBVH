@@ -26,8 +26,8 @@ struct Element {
     uint propertyIdx;
     uint paddingA;
     uint paddingB;
-    ivec4 aabbMin;
-    ivec4 aabbMax;
+    vec4 aabbMin;
+    vec4 aabbMax;
 };
 
 layout (std430, set = 2, binding = 1) readonly buffer elements {
@@ -39,8 +39,8 @@ struct LBVHNode {
     int right;
     uint primitiveIdx;
     uint propertyIdx; // TODO(Mirco): maybe exploit as parent pointer during build phase and override after/while calculating the bounding boxes?
-    ivec4 aabbMin;
-    ivec4 aabbMax;
+    vec4 aabbMin;
+    vec4 aabbMax;
 };
 
 layout (std430, set = 2, binding = 2) writeonly buffer lbvh {
@@ -167,9 +167,9 @@ void generateHierarchy() {
 
         // record parent-child relationships
         if (g_absolute_pointers != 0) {
-            g_lbvh[gID] = LBVHNode(childA, childB, 0, 0, ivec4(0), ivec4(0));
+            g_lbvh[gID] = LBVHNode(childA, childB, 0, 0, vec4(0), vec4(0));
         } else {
-            g_lbvh[gID] = LBVHNode(childA - int(gID), childB - int(gID), 0, 0, ivec4(0), ivec4(0));
+            g_lbvh[gID] = LBVHNode(childA - int(gID), childB - int(gID), 0, 0, vec4(0), vec4(0));
         }
         g_lbvh_construction_infos[childA] = LBVHConstructionInfo(gID, 0);
         g_lbvh_construction_infos[childB] = LBVHConstructionInfo(gID, 0);

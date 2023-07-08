@@ -9,8 +9,12 @@ layout (local_size_x = 256) in;
 
 layout (push_constant, std430) uniform PushConstants {
     uint g_num_elements;
-    ivec3 g_min;
-    ivec3 g_max;
+    float g_min_x;
+    float g_min_y;
+    float g_min_z;
+    float g_max_x;
+    float g_max_y;
+    float g_max_z;
 };
 
 struct MortonCodeElement {
@@ -27,8 +31,8 @@ struct Element {
     uint propertyIdx;
     uint paddingA;
     uint paddingB;
-    ivec4 aabbMin;
-    ivec4 aabbMax;
+    vec4 aabbMin;
+    vec4 aabbMax;
 };
 
 layout (std430, set = 0, binding = 1) readonly buffer elements {
@@ -69,6 +73,8 @@ void main() {
     // calculate center
     vec3 center = (element.aabbMin + 0.5 * (element.aabbMax - element.aabbMin)).xyz;
     // map to unit cube
+    vec3 g_min = vec3(g_min_x, g_min_y, g_min_z);
+    vec3 g_max = vec3(g_max_x, g_max_y, g_max_z);
     vec3 mappedCenter = (center - g_min) / (g_max - g_min);
     // assign morton code
     g_morton_codes[gID] = MortonCodeElement(morton3D(mappedCenter.x, mappedCenter.y, mappedCenter.z), gID);

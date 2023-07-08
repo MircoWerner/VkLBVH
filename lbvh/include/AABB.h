@@ -5,10 +5,10 @@
 
 namespace engine {
     struct AABB {
-        glm::ivec4 min = glm::ivec4(INT32_MAX, INT32_MAX, INT32_MAX, 0);
-        glm::ivec4 max = glm::ivec4(INT32_MIN, INT32_MIN, INT32_MIN, 0);
+        glm::vec4 min = glm::vec4(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0);
+        glm::vec4 max = glm::vec4(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), 0);
 
-        void expand(glm::ivec3 vec) {
+        void expand(glm::vec3 vec) {
             if (min.x > vec.x) {
                 min.x = vec.x;
             }
@@ -30,28 +30,28 @@ namespace engine {
             }
         }
 
-        [[nodiscard]] uint32_t calculateVolume() const {
+        [[nodiscard]] float calculateVolume() const {
             if (min.x >= max.x || min.y >= max.y || min.z >= max.z) {
                 return 0;
             }
             return (max.x - min.x) * (max.y - min.y) * (max.z - min.z);
         }
 
-        [[nodiscard]] uint32_t maxExtent() const { return static_cast<uint32_t>(glm::max(0, glm::max(max.x - min.x, glm::max(max.y - min.y, max.z - min.z)))) + 1; };
+        [[nodiscard]] float maxExtent() const { return glm::max(0.f, glm::max(max.x - min.x, glm::max(max.y - min.y, max.z - min.z))) + 1.f; };
 
         [[nodiscard]] int maxExtentAxis() const {
-            int xExtent = max.x - min.x;
-            int yExtent = max.y - min.y;
-            int zExtent = max.z - min.z;
+            float xExtent = max.x - min.x;
+            float yExtent = max.y - min.y;
+            float zExtent = max.z - min.z;
             if (xExtent > yExtent && xExtent > zExtent) {
                 return 0;
             }
             return yExtent > zExtent ? 1 : 2;
         }
 
-        [[nodiscard]] int32_t maxElement() const { return glm::max(max.x, glm::max(max.y, max.z)); }
+        [[nodiscard]] float maxElement() const { return glm::max(max.x, glm::max(max.y, max.z)); }
 
-        [[nodiscard]] int32_t minElement() const { return glm::min(min.x, glm::min(min.y, min.z)); }
+        [[nodiscard]] float minElement() const { return glm::min(min.x, glm::min(min.y, min.z)); }
 
         friend std::ostream& operator<< (std::ostream& stream, const AABB& aabb) {
             stream << "AABB{ min=(" << aabb.min.x << "," << aabb.min.y << "," << aabb.min.z << "), max=(" << aabb.max.x << "," << aabb.max.y << "," << aabb.max.z << ") }";

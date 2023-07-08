@@ -2,6 +2,7 @@
 
 #include "AABB.h"
 #include "LBVHPass.h"
+#include "tinyobjloader/tiny_obj_loader.h"
 
 #include <glm/glm.hpp>
 #include <random>
@@ -15,8 +16,8 @@ namespace engine {
             uint32_t paddingA;
             uint32_t paddingB;
             uint32_t paddingC;
-            glm::ivec4 aabbMin;
-            glm::ivec4 aabbMax;
+            glm::vec4 aabbMin; // TODO reduce size, remove padding
+            glm::vec4 aabbMax;
         };
 
         struct MortonCodeElement {
@@ -32,13 +33,13 @@ namespace engine {
             int32_t left;
             int32_t right;
             uint32_t primitiveIdx;
-            uint32_t propertyIdx;
-            glm::ivec4 aabbMin;
-            glm::ivec4 aabbMax;
+            uint32_t propertyIdx; // TODO store parent pointer
+            glm::vec4 aabbMin; // TODO reduce size, remove padding
+            glm::vec4 aabbMax;
         };
 
         struct LBVHConstructionInfo {
-            uint32_t parent;
+            uint32_t parent; // TODO can we get rid of this struct?
             int32_t visitationCount;
         };
 
@@ -46,10 +47,9 @@ namespace engine {
         void execute(GPUContext *gpuContext) {
             AABB extent{};
             std::vector<Element> elements;
-            //            generateElements(elements, &extent);
+            generateElements(elements, &extent);
             const uint NUM_ELEMENTS = elements.size();
             const uint NUM_LBVH_ELEMENTS = NUM_ELEMENTS + NUM_ELEMENTS - 1;
-            bool absolutePointers = true;
 
             // gpu context
             m_gpuContext = gpuContext;
@@ -64,13 +64,17 @@ namespace engine {
 
             // push constants
             m_pass->m_pushConstantsMortonCodes.g_num_elements = NUM_ELEMENTS;
-            m_pass->m_pushConstantsMortonCodes.g_min = glm::ivec3(0);
-            m_pass->m_pushConstantsMortonCodes.g_max = glm::ivec3(400);
+            m_pass->m_pushConstantsMortonCodes.g_min_x = -32.f; // TODO
+            m_pass->m_pushConstantsMortonCodes.g_min_y = -32.f; // TODO
+            m_pass->m_pushConstantsMortonCodes.g_min_z = -32.f; // TODO
+            m_pass->m_pushConstantsMortonCodes.g_max_x = 32.f;  // TODO
+            m_pass->m_pushConstantsMortonCodes.g_max_y = 32.f;  // TODO
+            m_pass->m_pushConstantsMortonCodes.g_max_z = 32.f;  // TODO
             m_pass->m_pushConstantsRadixSort.g_num_elements = NUM_ELEMENTS;
             m_pass->m_pushConstantsHierarchy.g_num_elements = NUM_ELEMENTS;
-            m_pass->m_pushConstantsHierarchy.g_absolute_pointers = absolutePointers ? 1 : 0;
+            m_pass->m_pushConstantsHierarchy.g_absolute_pointers = ABSOLUTE_POINTERS;
             m_pass->m_pushConstantsBoundingBoxes.g_num_elements = NUM_ELEMENTS;
-            m_pass->m_pushConstantsBoundingBoxes.g_absolute_pointers = absolutePointers ? 1 : 0;
+            m_pass->m_pushConstantsBoundingBoxes.g_absolute_pointers = ABSOLUTE_POINTERS;
 
             // buffers
             auto settingsElement = Buffer::BufferSettings{.m_sizeBytes = static_cast<uint32_t>(NUM_ELEMENTS * sizeof(Element)), .m_bufferUsages = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, .m_memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, .m_name = "lbvh.elementsBuffer"};
@@ -139,11 +143,25 @@ namespace engine {
             m_LBVHConstructionInfoBuffer->release();
         }
 
+        static void printBuffer(const std::string &label, std::vector<LBVHNode> &buffer, uint32_t numElements) {
+            std::cout << label << ":" << std::endl;
+            std::cout << "index, left, right, primIdx, propIdx, aabbMin, aabbMax" << std::endl;
+            for (uint32_t i = 0; i < numElements; i++) {
+                std::cout << std::setfill('0') << std::setw(5) << i << ": " << std::setfill(' ') << std::setw(5) << buffer[i].left << " " << std::setfill(' ') << std::setw(5) << buffer[i].right << " "
+                          << std::setfill(' ') << std::setw(5) << buffer[i].primitiveIdx << " " << std::setfill(' ') << std::setw(5) << buffer[i].propertyIdx << " " << std::setfill(' ') << std::setw(16)
+                          << "(" << buffer[i].aabbMin.x << "," << buffer[i].aabbMin.y << "," << buffer[i].aabbMin.z << "," << buffer[i].aabbMin.w << ")" << std::setfill(' ') << std::setw(16) << "("
+                          << buffer[i].aabbMax.x << "," << buffer[i].aabbMax.y << "," << buffer[i].aabbMax.z << "," << buffer[i].aabbMax.w << ")" << std::endl;
+            }
+            std::cout << std::endl;
+        }
+
         void verify(uint numLBVHElements) {
             std::vector<LBVHNode> LBVH(numLBVHElements);
             m_LBVHBuffer->downloadWithStagingBuffer(LBVH.data());
 
-            bool visited[LBVH.size()];
+//            printBuffer("LBVH", LBVH, numLBVHElements);
+
+            std::vector<bool> visited(numLBVHElements, false);
             traverse(0, LBVH.data(), visited);
             for (uint32_t i = 0; i < LBVH.size(); i++) {
                 if (!visited[i]) {
@@ -152,31 +170,47 @@ namespace engine {
                 }
             }
 
-            // verify aabbs
+            // verify aabbs TODO
 
             std::cout << PRINT_PREFIX << "Verification successful." << std::endl;
+
+            std::ofstream myfile;
+            myfile.open("lbvh.csv");
+            myfile << "left right primitiveIdx propertyIdx aabb_min_x aabb_min_y aabb_min_z aabb_max_x aabb_max_y aabb_max_z\n";
+            for (uint32_t i = 0; i < numLBVHElements; i++) {
+                myfile << LBVH[i].left << " "
+                       << LBVH[i].right << " "
+                       << LBVH[i].primitiveIdx << " "
+                       << LBVH[i].propertyIdx << " "
+                       << LBVH[i].aabbMin.x << " "
+                       << LBVH[i].aabbMin.y << " "
+                       << LBVH[i].aabbMin.z << " "
+                       << LBVH[i].aabbMax.x << " "
+                       << LBVH[i].aabbMax.y << " "
+                       << LBVH[i].aabbMax.z << "\n";
+            }
+            myfile.close();
         }
 
-        void traverse(uint32_t index, LBVHNode *LBVH, bool *visited) {
+        void traverse(uint32_t index, LBVHNode *LBVH, std::vector<bool> &visited) {
             LBVHNode node = LBVH[index];
 
-            if (node.left == INVALID_POINTER && node.right != INVALID_POINTER
-                || node.left != INVALID_POINTER && node.right == INVALID_POINTER) {
-                std::cout << PRINT_PREFIX << "Error: Node has only one child." << std::endl;
+            if (node.left == INVALID_POINTER && node.right != INVALID_POINTER || node.left != INVALID_POINTER && node.right == INVALID_POINTER) {
+                std::cout << PRINT_PREFIX << "Error: Node " << index << " has only one child." << std::endl;
                 throw std::runtime_error("TEST FAILED.");
             }
 
             if (node.left == INVALID_POINTER) {
                 // leaf
                 if (visited[index]) {
-                    std::cout << PRINT_PREFIX << "Error: Leaf node visited twice." << std::endl;
+                    std::cout << PRINT_PREFIX << "Error: Leaf node " << index << " visited twice." << std::endl;
                     throw std::runtime_error("TEST FAILED.");
                 }
                 visited[index] = true;
             } else {
                 // inner node
                 if (visited[index]) {
-                    std::cout << PRINT_PREFIX << "Error: Inner node visited twice." << std::endl;
+                    std::cout << PRINT_PREFIX << "Error: Inner node " << index << " visited twice." << std::endl;
                     throw std::runtime_error("TEST FAILED.");
                 }
                 visited[index] = true;
@@ -185,6 +219,64 @@ namespace engine {
                 uint32_t rightChildIndex = POINTER(index, node.right);
                 traverse(leftChildIndex, LBVH, visited);
                 traverse(rightChildIndex, LBVH, visited);
+            }
+        }
+
+        static void generateElements(std::vector<Element> &elements, AABB *extent) {
+            const std::string MODEL_FILE_NAME = "dragon.obj";
+            const std::string MODEL_PATH_DIRECTORY = engine::Paths::m_resourceDirectoryPath + "/models";
+
+            tinyobj::attrib_t attrib;
+            std::vector<tinyobj::shape_t> shapes;
+            std::vector<tinyobj::material_t> materials;
+            std::string warn, err;
+
+            if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, (MODEL_PATH_DIRECTORY + "/" + MODEL_FILE_NAME).c_str(), MODEL_PATH_DIRECTORY.c_str())) {
+                throw std::runtime_error(warn + err);
+            }
+
+            uint32_t primitiveIndex = 0;
+            // Loop over shapes
+            for (auto &shape: shapes) {
+                // Loop over faces(polygon)
+                size_t index_offset = 0;
+                for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
+                    auto fv = size_t(shape.mesh.num_face_vertices[f]);
+                    if (fv != 3) {
+                        std::cout << PRINT_PREFIX << "Error: Only triangle meshes supported." << std::endl;
+                        throw std::runtime_error("TEST FAILED.");
+                    }
+
+                    auto minV = glm::vec3(std::numeric_limits<float>::max());
+                    auto maxV = glm::vec3(-std::numeric_limits<float>::max());
+
+                    // Loop over vertices in the face.
+                    for (size_t v = 0; v < fv; v++) {
+                        // access to vertex
+                        tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
+
+                        minV[0] = glm::min(minV[0], attrib.vertices[3 * size_t(idx.vertex_index) + 0]);
+                        minV[1] = glm::min(minV[1], attrib.vertices[3 * size_t(idx.vertex_index) + 1]);
+                        minV[2] = glm::min(minV[2], attrib.vertices[3 * size_t(idx.vertex_index) + 2]);
+
+                        maxV[0] = glm::max(maxV[0], attrib.vertices[3 * size_t(idx.vertex_index) + 0]);
+                        maxV[1] = glm::max(maxV[1], attrib.vertices[3 * size_t(idx.vertex_index) + 1]);
+                        maxV[2] = glm::max(maxV[2], attrib.vertices[3 * size_t(idx.vertex_index) + 2]);
+                    }
+                    index_offset += fv;
+
+                    AABB aabb;
+                    aabb.expand(minV);
+                    aabb.expand(maxV);
+                    elements.push_back({primitiveIndex, 0, 0, 0, aabb.min, aabb.max});
+                    primitiveIndex++;
+                    extent->expand(minV);
+                    extent->expand(maxV);
+
+//                    if (primitiveIndex >= 16) {
+//                        return; // TESTING PURPOSES
+//                    }
+                }
             }
         }
     };

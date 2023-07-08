@@ -1,3 +1,5 @@
+#define TINYOBJLOADER_IMPLEMENTATION
+
 #include "LBVH.h"
 #include "engine/core/GPUContext.h"
 #include "engine/util/Paths.h"
