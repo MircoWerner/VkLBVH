@@ -1,0 +1,92 @@
+/**
+https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf
+https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
+*/
+#version 460
+#extension GL_GOOGLE_include_directive: enable
+
+layout (local_size_x = 256) in;
+
+layout (push_constant, std430) uniform PushConstants {
+    uint g_num_elements;
+    uint g_absolute_pointers;
+};
+
+struct LBVHNode {
+    int left;
+    int right;
+    uint primitiveIdx;
+    uint propertyIdx;
+    ivec4 aabbMin;
+    ivec4 aabbMax;
+};
+
+/*
+Why do we need the memory qualifier "coherent" [0]?
+We use multiple work groups that run on different streaming processors (SP).
+Each SP has its own L1 cache (see diagram in [1]).
+Consider the following case:
+After one thread writes the calculated bounding box to the lbvh buffer, the result remains in the L1 cache.
+The thread then continues with the parent node, increments the visitation count to 1 and returns (still not write the result through).
+A second thread on another SP continues with the parent node, increments the visitation count to 2 and accesses both children aabbs -> error.
+
+[0] https://www.khronos.org/opengl/wiki/Type_Qualifier_(GLSL)#Memory_qualifiers
+[1] https://github.com/philiptaylor/vulkan-sync/blob/master/memory.md#gpu-memory-architecture
+*/
+layout (std430, set = 3, binding = 0) coherent buffer lbvh {
+    LBVHNode g_lbvh[]; // |g_lbvh| == #leafnodes + #internalnodes = g_num_elements + g_num_elements - 1
+};
+
+struct LBVHConstructionInfo {
+    uint parent;
+    int visitationCount;
+};
+
+layout (std430, set = 3, binding = 1) buffer lbvh_construction_infos {
+    LBVHConstructionInfo g_lbvh_construction_infos[];
+};
+
+void aabbUnion(ivec4 minA, ivec4 maxA, ivec4 minB, ivec4 maxB, out ivec4 minAABB, out ivec4 maxAABB) {
+    minAABB = min(minA, minB);
+    maxAABB = max(maxA, maxB);
+}
+
+void generateBoundingBoxes() {
+    uint gID = gl_GlobalInvocationID.x;
+    uint lID = gl_LocalInvocationID.x;
+    const int LEAF_OFFSET = int(g_num_elements) - 1;
+
+    if (gID >= g_num_elements) {
+        return;
+    }
+
+    uint nodeIdx = g_lbvh_construction_infos[LEAF_OFFSET + gID].parent;
+    while (true) {
+        int visitations = atomicAdd(g_lbvh_construction_infos[nodeIdx].visitationCount, 1);
+        if (visitations < 1) {
+            // this is the first thread that arrived at this node -> finished
+            return;
+        }
+        // this is the second thread that arrived at this node, both children are computed -> compute aabb union and continue
+        LBVHNode bvhNode = g_lbvh[nodeIdx];
+        LBVHNode bvhNodeChildA;
+        LBVHNode bvhNodeChildB;
+        if (g_absolute_pointers != 0) {
+            bvhNodeChildA = g_lbvh[bvhNode.left];
+            bvhNodeChildB = g_lbvh[bvhNode.right];
+        } else {
+            bvhNodeChildA = g_lbvh[nodeIdx + bvhNode.left];
+            bvhNodeChildB = g_lbvh[nodeIdx + bvhNode.right];
+        }
+        aabbUnion(bvhNodeChildA.aabbMin, bvhNodeChildA.aabbMax, bvhNodeChildB.aabbMin, bvhNodeChildB.aabbMax, bvhNode.aabbMin, bvhNode.aabbMax);
+        g_lbvh[nodeIdx] = bvhNode;
+        if (nodeIdx == 0) {
+            return;
+        }
+        nodeIdx = g_lbvh_construction_infos[nodeIdx].parent;
+    }
+}
+
+void main() {
+    generateBoundingBoxes();
+}
