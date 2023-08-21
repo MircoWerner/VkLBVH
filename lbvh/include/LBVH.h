@@ -160,20 +160,6 @@ namespace engine {
             m_LBVHBuffer->downloadWithStagingBuffer(LBVH.data());
 
 //            printBuffer("LBVH", LBVH, numLBVHElements);
-
-            std::vector<bool> visited(numLBVHElements, false);
-            traverse(0, LBVH.data(), visited);
-            for (uint32_t i = 0; i < LBVH.size(); i++) {
-                if (!visited[i]) {
-                    std::cout << PRINT_PREFIX << "Error: Node not visited." << std::endl;
-                    throw std::runtime_error("TEST FAILED.");
-                }
-            }
-
-            // verify aabbs TODO
-
-            std::cout << PRINT_PREFIX << "Verification successful." << std::endl;
-
             std::ofstream myfile;
             myfile.open("lbvh.csv");
             myfile << "left right primitiveIdx propertyIdx aabb_min_x aabb_min_y aabb_min_z aabb_max_x aabb_max_y aabb_max_z\n";
@@ -190,10 +176,25 @@ namespace engine {
                        << LBVH[i].aabbMax.z << "\n";
             }
             myfile.close();
+
+            std::vector<bool> visited(numLBVHElements, false);
+            traverse(0, LBVH.data(), visited);
+            for (uint32_t i = 0; i < LBVH.size(); i++) {
+                if (!visited[i]) {
+                    std::cout << PRINT_PREFIX << "Error: Node not visited." << std::endl;
+                    throw std::runtime_error("TEST FAILED.");
+                }
+            }
+
+            // verify aabbs TODO
+
+            std::cout << PRINT_PREFIX << "Verification successful." << std::endl;
         }
 
         void traverse(uint32_t index, LBVHNode *LBVH, std::vector<bool> &visited) {
             LBVHNode node = LBVH[index];
+
+            std::cout << index << "-";
 
             if (node.left == INVALID_POINTER && node.right != INVALID_POINTER || node.left != INVALID_POINTER && node.right == INVALID_POINTER) {
                 std::cout << PRINT_PREFIX << "Error: Node " << index << " has only one child." << std::endl;
@@ -206,6 +207,7 @@ namespace engine {
                     std::cout << PRINT_PREFIX << "Error: Leaf node " << index << " visited twice." << std::endl;
                     throw std::runtime_error("TEST FAILED.");
                 }
+                std::cout << std::endl;
                 visited[index] = true;
             } else {
                 // inner node
@@ -273,7 +275,7 @@ namespace engine {
                     extent->expand(minV);
                     extent->expand(maxV);
 
-//                    if (primitiveIndex >= 16) {
+//                    if (primitiveIndex >= 64) {
 //                        return; // TESTING PURPOSES
 //                    }
                 }
