@@ -25,8 +25,8 @@ namespace engine {
         Buffer(GPUContext *gpuContext, BufferSettings settings) : m_gpuContext(gpuContext), m_bufferSettings(std::move(settings)) {
             createBuffer();
 
-//            m_gpuContext->getDebug()->setName(m_buffer, m_bufferSettings.m_name);
-//            m_gpuContext->getDebug()->setName(m_bufferMemory, m_bufferSettings.m_name);
+            //            m_gpuContext->getDebug()->setName(m_buffer, m_bufferSettings.m_name);
+            //            m_gpuContext->getDebug()->setName(m_bufferMemory, m_bufferSettings.m_name);
         }
 
         ~Buffer() {
@@ -44,7 +44,7 @@ namespace engine {
             m_bufferMemory = nullptr;
         }
 
-        static std::shared_ptr<Buffer> fillDeviceWithStagingBuffer(GPUContext *gpuContext, const BufferSettings& settings, void *data) { // upload
+        static std::shared_ptr<Buffer> fillDeviceWithStagingBuffer(GPUContext *gpuContext, const BufferSettings &settings, void *data) { // upload
             Buffer stagingBuffer(gpuContext, {settings.m_sizeBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT});
 
             void *stagingMemory;
@@ -175,4 +175,4 @@ namespace engine {
             });
         }
     };
-} // namespace raven
+} // namespace engine

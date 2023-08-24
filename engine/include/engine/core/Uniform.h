@@ -46,7 +46,7 @@ namespace engine {
             for (size_t i = 0; i < m_gpuContext->getMultiBufferedCount(); i++) {
                 std::stringstream ss;
                 ss << "[Uniform]_" << m_name << "[" << i << "]";
-                auto settings = Buffer::BufferSettings{.m_sizeBytes = getBytes(), .m_bufferUsages = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, .m_memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, .m_name=ss.str()};
+                auto settings = Buffer::BufferSettings{.m_sizeBytes = getBytes(), .m_bufferUsages = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, .m_memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, .m_name = ss.str()};
                 m_buffers[i] = std::make_shared<Buffer>(m_gpuContext, settings);
             }
         }
@@ -98,7 +98,7 @@ namespace engine {
             UniformVariable *variable = getVariable(name);
             uint32_t bytes = sizeof(T);
             assert(bytes == variable->bytes);
-            char *bytePointer = (char *)(&value);
+            char *bytePointer = (char *) (&value);
             for (uint32_t i = 0; i < bytes; i++) {
                 variable->data[i] = bytePointer[i];
             }
@@ -134,4 +134,4 @@ namespace engine {
             throw std::runtime_error("Unknown uniform variable " + name + ".");
         }
     };
-} // namespace raven
+} // namespace engine

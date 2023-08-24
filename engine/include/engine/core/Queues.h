@@ -3,8 +3,8 @@
 #include <array>
 #include <memory>
 #include <optional>
-#include <vector>
 #include <set>
+#include <vector>
 #include <vulkan/vulkan_core.h>
 
 namespace engine {
@@ -33,9 +33,7 @@ namespace engine {
                 uint32_t graphics = GRAPHICS_FAMILY & requiredQueueFamilies;
                 uint32_t compute = COMPUTE_FAMILY & requiredQueueFamilies;
                 uint32_t transfer = TRANSFER_FAMILY & requiredQueueFamilies;
-                return (!graphics || graphicsFamily.has_value())
-                       && (!compute || computeFamily.has_value())
-                       && (!transfer || transferFamily.has_value());
+                return (!graphics || graphicsFamily.has_value()) && (!compute || computeFamily.has_value()) && (!transfer || transferFamily.has_value());
             }
 
             void generateQueueCreateInfos(std::vector<VkDeviceQueueCreateInfo> *queueCreateInfos, const float *queuePriorities) {
@@ -75,4 +73,4 @@ namespace engine {
 
         [[nodiscard]] bool isFamilyRequired(QueueFamilies queueFamily) const;
     };
-} // namespace raven
+} // namespace engine
