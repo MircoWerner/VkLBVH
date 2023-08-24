@@ -11,7 +11,7 @@ layout (local_size_x = 256) in;
 
 layout (push_constant, std430) uniform PushConstants {
     uint g_num_elements;
-    uint g_absolute_pointers;
+    uint g_absolute_pointers;// 1 for absolute, 0 for relative pointers
 };
 
 layout (std430, set = 2, binding = 0) readonly buffer sorted_morton_codes {

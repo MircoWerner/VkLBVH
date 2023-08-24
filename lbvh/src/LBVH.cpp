@@ -16,7 +16,7 @@ namespace engine {
         m_pass = std::make_shared<LBVHPass>(gpuContext);
         m_pass->create();
         m_pass->setGlobalInvocationSize(LBVHPass::MORTON_CODES, NUM_ELEMENTS, 1, 1);
-        m_pass->setGlobalInvocationSize(LBVHPass::RADIX_SORT, 1, 1, 1);
+        m_pass->setGlobalInvocationSize(LBVHPass::RADIX_SORT, 256, 1, 1); // WORKGROUP_SIZE defined in lbvh_single_radix_sort.comp, i.e. we just want to launch a single work group
         m_pass->setGlobalInvocationSize(LBVHPass::HIERARCHY, NUM_ELEMENTS, 1, 1);
         m_pass->setGlobalInvocationSize(LBVHPass::BOUNDING_BOXES, NUM_ELEMENTS, 1, 1);
 

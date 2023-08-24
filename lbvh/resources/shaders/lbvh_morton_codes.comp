@@ -11,7 +11,7 @@ layout (local_size_x = 256) in;
 
 layout (push_constant, std430) uniform PushConstants {
     uint g_num_elements;
-    float g_min_x;
+    float g_min_x;// AABB that contains the entire model
     float g_min_y;
     float g_min_z;
     float g_max_x;

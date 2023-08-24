@@ -113,10 +113,10 @@ VkMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .srcAcc
 ```
 Set the global invocation sizes of the four shaders:
 ```cpp
-lbvh_morton_codes: (NUM_ELEMENTS, 1, 1); // (x,y,z global invocation sizes)
-lbvh_single_radixsort: (1, 1, 1);
-lbvh_hierarchy: (NUM_ELEMENTS, 1, 1);
-lbvh_bounding_boxes: (NUM_ELEMENTS, 1, 1);
+lbvh_morton_codes: (NUM_ELEMENTS, 1, 1) // (x,y,z global invocation sizes)
+lbvh_single_radixsort: (256, 1, 1) // 256=WORKGROUP_SIZE defined in lbvh_single_radix_sort.comp, i.e. we just want to launch a single work group
+lbvh_hierarchy: (NUM_ELEMENTS, 1, 1)
+lbvh_bounding_boxes: (NUM_ELEMENTS, 1, 1)
 ```
 
 <a name="buffers"></a>
