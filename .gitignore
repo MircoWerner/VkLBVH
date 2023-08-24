@@ -20,3 +20,7 @@ CmakeSettings.json
 
 # Shaders
 *.spv
+
+# specific models
+hairball.obj
+powerplant.obj

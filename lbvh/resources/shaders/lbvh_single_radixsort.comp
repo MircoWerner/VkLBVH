@@ -3,6 +3,8 @@
 #extension GL_KHR_shader_subgroup_basic: enable
 #extension GL_KHR_shader_subgroup_arithmetic: enable
 
+#include "lbvh_common.glsl"
+
 #define WORKGROUP_SIZE 256 // assert WORKGROUP_SIZE >= RADIX_SORT_BINS
 #define RADIX_SORT_BINS 256
 #define SUBGROUP_SIZE 32
@@ -12,11 +14,6 @@ layout (local_size_x = WORKGROUP_SIZE) in;
 
 layout (push_constant, std430) uniform PushConstants {
     uint g_num_elements;
-};
-
-struct MortonCodeElement {
-    uint mortonCode; // key for sorting
-    uint elementIdx; // pointer into element buffer
 };
 
 layout (std430, set = 1, binding = 0) buffer elements_in {
@@ -39,6 +36,7 @@ shared BinFlags[RADIX_SORT_BINS] bin_flags;
 
 #define ELEMENT_KEY_IN(index, iteration) (iteration % 2 == 0 ? g_elements_in[index].mortonCode : g_elements_out[index].mortonCode)
 
+// sort morton codes
 void main() {
     uint lID = gl_LocalInvocationID.x;
     uint workgroupSize = gl_WorkGroupSize.x; // == local_size_x
@@ -57,7 +55,7 @@ void main() {
 
         for (uint ID = lID; ID < g_num_elements; ID += workgroupSize) {
             // determine the bin
-            const uint bin = uint(ELEMENT_KEY_IN(ID, iteration) >> shift) & (RADIX_SORT_BINS - 1);
+            const uint bin = (ELEMENT_KEY_IN(ID, iteration) >> shift) & (RADIX_SORT_BINS - 1);
             // increment the histogram
             atomicAdd(histogram[bin], 1U);
         }
@@ -112,7 +110,7 @@ void main() {
                 } else {
                     element_in = g_elements_out[ID];
                 }
-                binID = (element_in.mortonCode >> shift) & (RADIX_SORT_BINS - 1);
+                binID = (element_in.mortonCode >> shift) & uint(RADIX_SORT_BINS - 1);
                 // offset for group
                 binOffset = global_offsets[binID];
                 // add bit to flag

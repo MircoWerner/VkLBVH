@@ -5,20 +5,13 @@ https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-g
 #version 460
 #extension GL_GOOGLE_include_directive: enable
 
+#include "lbvh_common.glsl"
+
 layout (local_size_x = 256) in;
 
 layout (push_constant, std430) uniform PushConstants {
     uint g_num_elements;
     uint g_absolute_pointers;
-};
-
-struct LBVHNode {
-    int left;
-    int right;
-    uint primitiveIdx;
-    uint propertyIdx;
-    vec4 aabbMin;
-    vec4 aabbMax;
 };
 
 /*
@@ -37,21 +30,17 @@ layout (std430, set = 3, binding = 0) coherent buffer lbvh {
     LBVHNode g_lbvh[]; // |g_lbvh| == #leafnodes + #internalnodes = g_num_elements + g_num_elements - 1
 };
 
-struct LBVHConstructionInfo {
-    uint parent;
-    int visitationCount;
-};
-
 layout (std430, set = 3, binding = 1) buffer lbvh_construction_infos {
     LBVHConstructionInfo g_lbvh_construction_infos[];
 };
 
-void aabbUnion(vec4 minA, vec4 maxA, vec4 minB, vec4 maxB, out vec4 minAABB, out vec4 maxAABB) {
+void aabbUnion(vec3 minA, vec3 maxA, vec3 minB, vec3 maxB, out vec3 minAABB, out vec3 maxAABB) {
     minAABB = min(minA, minB);
     maxAABB = max(maxA, maxB);
 }
 
-void generateBoundingBoxes() {
+// construct bounding boxes
+void main() {
     uint gID = gl_GlobalInvocationID.x;
     uint lID = gl_LocalInvocationID.x;
     const int LEAF_OFFSET = int(g_num_elements) - 1;
@@ -78,15 +67,23 @@ void generateBoundingBoxes() {
             bvhNodeChildA = g_lbvh[nodeIdx + bvhNode.left];
             bvhNodeChildB = g_lbvh[nodeIdx + bvhNode.right];
         }
-        aabbUnion(bvhNodeChildA.aabbMin, bvhNodeChildA.aabbMax, bvhNodeChildB.aabbMin, bvhNodeChildB.aabbMax, bvhNode.aabbMin, bvhNode.aabbMax);
+        vec3 minA = vec3(bvhNodeChildA.aabbMinX, bvhNodeChildA.aabbMinY, bvhNodeChildA.aabbMinZ);
+        vec3 maxA = vec3(bvhNodeChildA.aabbMaxX, bvhNodeChildA.aabbMaxY, bvhNodeChildA.aabbMaxZ);
+        vec3 minB = vec3(bvhNodeChildB.aabbMinX, bvhNodeChildB.aabbMinY, bvhNodeChildB.aabbMinZ);
+        vec3 maxB = vec3(bvhNodeChildB.aabbMaxX, bvhNodeChildB.aabbMaxY, bvhNodeChildB.aabbMaxZ);
+        vec3 minAABB;
+        vec3 maxAABB;
+        aabbUnion(minA, maxA, minB, maxB, minAABB, maxAABB);
+        bvhNode.aabbMinX = minAABB.x;
+        bvhNode.aabbMinY = minAABB.y;
+        bvhNode.aabbMinZ = minAABB.z;
+        bvhNode.aabbMaxX = maxAABB.x;
+        bvhNode.aabbMaxY = maxAABB.y;
+        bvhNode.aabbMaxZ = maxAABB.z;
         g_lbvh[nodeIdx] = bvhNode;
         if (nodeIdx == 0) {
             return;
         }
         nodeIdx = g_lbvh_construction_infos[nodeIdx].parent;
     }
-}
-
-void main() {
-    generateBoundingBoxes();
 }

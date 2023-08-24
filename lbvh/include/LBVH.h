@@ -11,37 +11,46 @@
 namespace engine {
     class LBVH {
     private:
+        // input for the builder (normally a triangle or some other kind of primitive); it is necessary to allocate and fill the buffer
         struct Element {
-            uint32_t primitiveIdx;
-            uint32_t paddingA;
-            uint32_t paddingB;
-            uint32_t paddingC;
-            glm::vec4 aabbMin; // TODO reduce size, remove padding
-            glm::vec4 aabbMax;
+            uint32_t primitiveIdx; // the id of the primitive; this primitive id is copied to the leaf nodes of the  LBVHNode
+            float aabbMinX;        // aabb of the primitive
+            float aabbMinY;
+            float aabbMinZ;
+            float aabbMaxX;
+            float aabbMaxY;
+            float aabbMaxZ;
         };
 
+        // output of the builder; it is necessary to allocate the (empty) buffer
+        struct LBVHNode {
+            int32_t left;          // pointer to the left child or INVALID_POINTER in case of leaf
+            int32_t right;         // pointer to the right child or INVALID_POINTER in case of leaf
+            uint32_t primitiveIdx; // custom value that is copied from the input Element or 0 in case of inner node
+            float aabbMinX;        // aabb of the node
+            float aabbMinY;
+            float aabbMinZ;
+            float aabbMaxX;
+            float aabbMaxY;
+            float aabbMaxZ;
+        };
+
+        // only used on the GPU side during construction; it is necessary to allocate the (empty) buffer
         struct MortonCodeElement {
             uint32_t mortonCode; // key for sorting
             uint32_t elementIdx; // pointer into element buffer
         };
 
-#define INVALID_POINTER 0x0
-#define ABSOLUTE_POINTERS 1
-#define POINTER(index, pointer) (ABSOLUTE_POINTERS ? (pointer) : (index) + (pointer))
-
-        struct LBVHNode {
-            int32_t left;
-            int32_t right;
-            uint32_t primitiveIdx;
-            uint32_t propertyIdx; // TODO store parent pointer
-            glm::vec4 aabbMin; // TODO reduce size, remove padding
-            glm::vec4 aabbMax;
-        };
-
+        // only used on the GPU side during construction; it is necessary to allocate the (empty) buffer
         struct LBVHConstructionInfo {
-            uint32_t parent; // TODO can we get rid of this struct?
-            int32_t visitationCount;
+            uint32_t parent;         // pointer to the parent
+            int32_t visitationCount; // number of threads that arrived
         };
+
+#define INVALID_POINTER 0x0 // do not change
+#define ABSOLUTE_POINTERS 1 // 1 to use absolute pointers (left/right child pointer is the absolute index of the child in the buffer/array)
+//or 0 for relative pointers (left/right child pointer is the relative pointer from the parent index to the child index in the buffer, i.e. absolute child pointer = absolute parent pointer + relative child pointer)
+#define POINTER(index, pointer) (ABSOLUTE_POINTERS ? (pointer) : (index) + (pointer)) // helper macro to handle relative pointers on CPU side, i.e. convert them to absolute pointers for array indexing
 
     public:
         void execute(GPUContext *gpuContext) {
@@ -64,12 +73,12 @@ namespace engine {
 
             // push constants
             m_pass->m_pushConstantsMortonCodes.g_num_elements = NUM_ELEMENTS;
-            m_pass->m_pushConstantsMortonCodes.g_min_x = -32.f; // TODO
-            m_pass->m_pushConstantsMortonCodes.g_min_y = -32.f; // TODO
-            m_pass->m_pushConstantsMortonCodes.g_min_z = -32.f; // TODO
-            m_pass->m_pushConstantsMortonCodes.g_max_x = 32.f;  // TODO
-            m_pass->m_pushConstantsMortonCodes.g_max_y = 32.f;  // TODO
-            m_pass->m_pushConstantsMortonCodes.g_max_z = 32.f;  // TODO
+            m_pass->m_pushConstantsMortonCodes.g_min_x = 8 * extent.min.x;
+            m_pass->m_pushConstantsMortonCodes.g_min_y = 8 * extent.min.y;
+            m_pass->m_pushConstantsMortonCodes.g_min_z = 8 * extent.min.z;
+            m_pass->m_pushConstantsMortonCodes.g_max_x = 8 * extent.max.x;
+            m_pass->m_pushConstantsMortonCodes.g_max_y = 8 * extent.max.y;
+            m_pass->m_pushConstantsMortonCodes.g_max_z = 8 * extent.max.z;
             m_pass->m_pushConstantsRadixSort.g_num_elements = NUM_ELEMENTS;
             m_pass->m_pushConstantsHierarchy.g_num_elements = NUM_ELEMENTS;
             m_pass->m_pushConstantsHierarchy.g_absolute_pointers = ABSOLUTE_POINTERS;
@@ -93,6 +102,7 @@ namespace engine {
             m_LBVHConstructionInfoBuffer = std::make_shared<Buffer>(gpuContext, settingsLBVHConstructionInfo);
 
             std::cout << PRINT_PREFIX << "Building LBVH for " << NUM_ELEMENTS << " elements." << std::endl;
+            std::cout << PRINT_PREFIX << "Union of all element AABBs: " << extent << std::endl;
 
             // set storage buffers
             m_pass->setStorageBuffer(0, 0, m_mortonCodeBuffer.get());
@@ -143,39 +153,31 @@ namespace engine {
             m_LBVHConstructionInfoBuffer->release();
         }
 
-        static void printBuffer(const std::string &label, std::vector<LBVHNode> &buffer, uint32_t numElements) {
-            std::cout << label << ":" << std::endl;
-            std::cout << "index, left, right, primIdx, propIdx, aabbMin, aabbMax" << std::endl;
-            for (uint32_t i = 0; i < numElements; i++) {
-                std::cout << std::setfill('0') << std::setw(5) << i << ": " << std::setfill(' ') << std::setw(5) << buffer[i].left << " " << std::setfill(' ') << std::setw(5) << buffer[i].right << " "
-                          << std::setfill(' ') << std::setw(5) << buffer[i].primitiveIdx << " " << std::setfill(' ') << std::setw(5) << buffer[i].propertyIdx << " " << std::setfill(' ') << std::setw(16)
-                          << "(" << buffer[i].aabbMin.x << "," << buffer[i].aabbMin.y << "," << buffer[i].aabbMin.z << "," << buffer[i].aabbMin.w << ")" << std::setfill(' ') << std::setw(16) << "("
-                          << buffer[i].aabbMax.x << "," << buffer[i].aabbMax.y << "," << buffer[i].aabbMax.z << "," << buffer[i].aabbMax.w << ")" << std::endl;
-            }
-            std::cout << std::endl;
-        }
-
         void verify(uint numLBVHElements) {
             std::vector<LBVHNode> LBVH(numLBVHElements);
             m_LBVHBuffer->downloadWithStagingBuffer(LBVH.data());
 
-//            printBuffer("LBVH", LBVH, numLBVHElements);
+            std::cout << PRINT_PREFIX << "Writing LBVH to file (lbvh.csv)..." << std::endl;
+
             std::ofstream myfile;
             myfile.open("lbvh.csv");
-            myfile << "left right primitiveIdx propertyIdx aabb_min_x aabb_min_y aabb_min_z aabb_max_x aabb_max_y aabb_max_z\n";
+            myfile << "left right primitiveIdx aabb_min_x aabb_min_y aabb_min_z aabb_max_x aabb_max_y aabb_max_z\n";
             for (uint32_t i = 0; i < numLBVHElements; i++) {
                 myfile << LBVH[i].left << " "
                        << LBVH[i].right << " "
                        << LBVH[i].primitiveIdx << " "
-                       << LBVH[i].propertyIdx << " "
-                       << LBVH[i].aabbMin.x << " "
-                       << LBVH[i].aabbMin.y << " "
-                       << LBVH[i].aabbMin.z << " "
-                       << LBVH[i].aabbMax.x << " "
-                       << LBVH[i].aabbMax.y << " "
-                       << LBVH[i].aabbMax.z << "\n";
+                       << LBVH[i].aabbMinX << " "
+                       << LBVH[i].aabbMinY << " "
+                       << LBVH[i].aabbMinZ << " "
+                       << LBVH[i].aabbMaxX << " "
+                       << LBVH[i].aabbMaxY << " "
+                       << LBVH[i].aabbMaxZ << "\n";
             }
             myfile.close();
+
+            std::cout << PRINT_PREFIX << "Writing successful." << std::endl;
+
+            std::cout << PRINT_PREFIX << "Starting verification of hierarchy and bounding boxes..." << std::endl;
 
             std::vector<bool> visited(numLBVHElements, false);
             traverse(0, LBVH.data(), visited);
@@ -186,15 +188,29 @@ namespace engine {
                 }
             }
 
-            // verify aabbs TODO
-
             std::cout << PRINT_PREFIX << "Verification successful." << std::endl;
+        }
+
+        static bool aabbIsUnion(AABB parentAABB, AABB childAAABB, AABB childBAABB) {
+            AABB childrenAABB;
+            childrenAABB.expand(childAAABB.min);
+            childrenAABB.expand(childAAABB.max);
+            childrenAABB.expand(childBAABB.min);
+            childrenAABB.expand(childBAABB.max);
+            float EPS = 0.0001;
+            if (glm::abs(parentAABB.max.x - childrenAABB.max.x) > EPS ||
+                glm::abs(parentAABB.max.y - childrenAABB.max.y) > EPS ||
+                glm::abs(parentAABB.max.z - childrenAABB.max.z) > EPS ||
+                glm::abs(parentAABB.min.x - childrenAABB.min.x) > EPS ||
+                glm::abs(parentAABB.min.y - childrenAABB.min.y) > EPS ||
+                glm::abs(parentAABB.min.z - childrenAABB.min.z) > EPS) {
+                return false;
+            }
+            return true;
         }
 
         void traverse(uint32_t index, LBVHNode *LBVH, std::vector<bool> &visited) {
             LBVHNode node = LBVH[index];
-
-            std::cout << index << "-";
 
             if (node.left == INVALID_POINTER && node.right != INVALID_POINTER || node.left != INVALID_POINTER && node.right == INVALID_POINTER) {
                 std::cout << PRINT_PREFIX << "Error: Node " << index << " has only one child." << std::endl;
@@ -207,7 +223,6 @@ namespace engine {
                     std::cout << PRINT_PREFIX << "Error: Leaf node " << index << " visited twice." << std::endl;
                     throw std::runtime_error("TEST FAILED.");
                 }
-                std::cout << std::endl;
                 visited[index] = true;
             } else {
                 // inner node
@@ -219,6 +234,19 @@ namespace engine {
 
                 uint32_t leftChildIndex = POINTER(index, node.left);
                 uint32_t rightChildIndex = POINTER(index, node.right);
+
+                // verify aabbs
+                LBVHNode childA = LBVH[leftChildIndex];
+                LBVHNode childB = LBVH[rightChildIndex];
+                AABB parentAABB({node.aabbMinX, node.aabbMinY, node.aabbMinZ, 0}, {node.aabbMaxX, node.aabbMaxY, node.aabbMaxZ, 0});
+                AABB childAAABB({childA.aabbMinX, childA.aabbMinY, childA.aabbMinZ, 0}, {childA.aabbMaxX, childA.aabbMaxY, childA.aabbMaxZ, 0});
+                AABB childBAABB({childB.aabbMinX, childB.aabbMinY, childB.aabbMinZ, 0}, {childB.aabbMaxX, childB.aabbMaxY, childB.aabbMaxZ, 0});
+                if (!aabbIsUnion(parentAABB, childAAABB, childBAABB)) {
+                    std::cout << PRINT_PREFIX << "Error: Inner node " << index << " has an AABB that is not the union of the children (left=" << leftChildIndex << ",right=" << rightChildIndex << ") AABBs. parentAABB=" << parentAABB << " leftAABB=" << childAAABB << " rightAABB=" << childBAABB << std::endl;
+                    throw std::runtime_error("TEST FAILED.");
+                }
+
+                // continue traversal
                 traverse(leftChildIndex, LBVH, visited);
                 traverse(rightChildIndex, LBVH, visited);
             }
@@ -270,14 +298,10 @@ namespace engine {
                     AABB aabb;
                     aabb.expand(minV);
                     aabb.expand(maxV);
-                    elements.push_back({primitiveIndex, 0, 0, 0, aabb.min, aabb.max});
+                    elements.push_back({primitiveIndex, aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z});
                     primitiveIndex++;
                     extent->expand(minV);
                     extent->expand(maxV);
-
-//                    if (primitiveIndex >= 64) {
-//                        return; // TESTING PURPOSES
-//                    }
                 }
             }
         }

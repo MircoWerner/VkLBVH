@@ -46,10 +46,10 @@ namespace engine {
 
     protected:
         std::vector<std::shared_ptr<Shader>> createShaders() override {
-            return {std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "morton_codes.comp"),
-                    std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "single_radixsort.comp"),
-                    std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "hierarchy.comp"),
-                    std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "bounding_boxes.comp")};
+            return {std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "lbvh_morton_codes.comp"),
+                    std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "lbvh_single_radixsort.comp"),
+                    std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "lbvh_hierarchy.comp"),
+                    std::make_shared<Shader>(m_gpuContext, Paths::m_resourceDirectoryPath + "/shaders", "lbvh_bounding_boxes.comp")};
         }
 
         void recordCommands(VkCommandBuffer commandBuffer) override {

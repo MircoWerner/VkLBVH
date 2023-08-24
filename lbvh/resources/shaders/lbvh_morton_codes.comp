@@ -5,6 +5,8 @@ https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-g
 #version 460
 #extension GL_GOOGLE_include_directive: enable
 
+#include "lbvh_common.glsl"
+
 layout (local_size_x = 256) in;
 
 layout (push_constant, std430) uniform PushConstants {
@@ -17,22 +19,8 @@ layout (push_constant, std430) uniform PushConstants {
     float g_max_z;
 };
 
-struct MortonCodeElement {
-    uint mortonCode; // key for sorting
-    uint elementIdx; // pointer into element buffer
-};
-
 layout (std430, set = 0, binding = 0) writeonly buffer morton_codes {
     MortonCodeElement g_morton_codes[];
-};
-
-struct Element {
-    uint primitiveIdx;
-    uint propertyIdx;
-    uint paddingA;
-    uint paddingB;
-    vec4 aabbMin;
-    vec4 aabbMax;
 };
 
 layout (std430, set = 0, binding = 1) readonly buffer elements {
@@ -61,6 +49,7 @@ uint morton3D(float x, float y, float z) {
     return xx * 4 + yy * 2 + zz;
 }
 
+// calculate morton code for each element
 void main() {
     uint gID = gl_GlobalInvocationID.x;
 
@@ -69,9 +58,11 @@ void main() {
     }
 
     Element element = g_elements[gID];
+    vec3 aabbMin = vec3(element.aabbMinX, element.aabbMinY, element.aabbMinZ);
+    vec3 aabbMax = vec3(element.aabbMaxX, element.aabbMaxY, element.aabbMaxZ);
 
     // calculate center
-    vec3 center = (element.aabbMin + 0.5 * (element.aabbMax - element.aabbMin)).xyz;
+    vec3 center = (aabbMin + 0.5 * (aabbMax - aabbMin)).xyz;
     // map to unit cube
     vec3 g_min = vec3(g_min_x, g_min_y, g_min_z);
     vec3 g_max = vec3(g_max_x, g_max_y, g_max_z);

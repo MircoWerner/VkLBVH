@@ -5,6 +5,8 @@ https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-g
 #version 460
 #extension GL_GOOGLE_include_directive: enable
 
+#include "lbvh_common.glsl"
+
 layout (local_size_x = 256) in;
 
 layout (push_constant, std430) uniform PushConstants {
@@ -12,44 +14,16 @@ layout (push_constant, std430) uniform PushConstants {
     uint g_absolute_pointers;
 };
 
-struct MortonCodeElement {
-    uint mortonCode; // key for sorting
-    uint elementIdx; // pointer into element buffer
-};
-
 layout (std430, set = 2, binding = 0) readonly buffer sorted_morton_codes {
     MortonCodeElement g_sorted_morton_codes[];
-};
-
-struct Element {
-    uint primitiveIdx;
-    uint propertyIdx;
-    uint paddingA;
-    uint paddingB;
-    vec4 aabbMin;
-    vec4 aabbMax;
 };
 
 layout (std430, set = 2, binding = 1) readonly buffer elements {
     Element g_elements[];
 };
 
-struct LBVHNode {
-    int left;
-    int right;
-    uint primitiveIdx;
-    uint propertyIdx; // TODO(Mirco): maybe exploit as parent pointer during build phase and override after/while calculating the bounding boxes?
-    vec4 aabbMin;
-    vec4 aabbMax;
-};
-
 layout (std430, set = 2, binding = 2) writeonly buffer lbvh {
-    LBVHNode g_lbvh[]; // |g_lbvh| == #leafnodes + #internalnodes = g_num_elements + g_num_elements - 1
-};
-
-struct LBVHConstructionInfo {
-    uint parent;
-    int visitationCount;
+    LBVHNode g_lbvh[];// |g_lbvh| == #leafnodes + #internalnodes = g_num_elements + g_num_elements - 1
 };
 
 layout (std430, set = 2, binding = 3) writeonly buffer lbvh_construction_infos {
@@ -111,15 +85,15 @@ int findSplit(int first, int last) {
     // Use binary search to find where the next bit differs.
     // Specifically, we are looking for the highest object that
     // shares more than commonPrefix bits with the first one.
-    int split = first; // initial guess
+    int split = first;// initial guess
     int stride = last - first;
     do {
-        stride = (stride + 1) >> 1; // exponential decrease
-        int newSplit = split + stride; // proposed new position
+        stride = (stride + 1) >> 1;// exponential decrease
+        int newSplit = split + stride;// proposed new position
         if (newSplit < last) {
             int splitPrefix = delta(first, firstCode, newSplit);
             if (splitPrefix > commonPrefix) {
-                split = newSplit; // accept proposal
+                split = newSplit;// accept proposal
             }
         }
     } while (stride > 1);
@@ -127,7 +101,8 @@ int findSplit(int first, int last) {
     return split;
 }
 
-void generateHierarchy() {
+// build hierarchy
+void main() {
     uint gID = gl_GlobalInvocationID.x;
     uint lID = gl_LocalInvocationID.x;
     const int LEAF_OFFSET = int(g_num_elements) - 1;
@@ -135,7 +110,7 @@ void generateHierarchy() {
     // construct leaf nodes
     if (gID < g_num_elements) {
         Element element = g_elements[g_sorted_morton_codes[gID].elementIdx];
-        g_lbvh[LEAF_OFFSET + gID] = LBVHNode(INVALID_POINTER, INVALID_POINTER, element.primitiveIdx, element.propertyIdx, element.aabbMin, element.aabbMax);
+        g_lbvh[LEAF_OFFSET + gID] = LBVHNode(INVALID_POINTER, INVALID_POINTER, element.primitiveIdx, element.aabbMinX, element.aabbMinY, element.aabbMinZ, element.aabbMaxX, element.aabbMaxY, element.aabbMaxZ);
     }
 
     // construct internal nodes
@@ -152,35 +127,31 @@ void generateHierarchy() {
         // select childA
         int childA = -1;
         if (split == first) {
-            childA = LEAF_OFFSET + split; // pointer to leaf node
+            childA = LEAF_OFFSET + split;// pointer to leaf node
         } else {
-            childA = split; // pointer to internal node
+            childA = split;// pointer to internal node
         }
 
         // select childB
         int childB = -1;
         if (split + 1 == last) {
-            childB = LEAF_OFFSET + split + 1; // pointer to leaf node
+            childB = LEAF_OFFSET + split + 1;// pointer to leaf node
         } else {
-            childB = split + 1; // pointer to internal node
+            childB = split + 1;// pointer to internal node
         }
 
         // record parent-child relationships
         if (g_absolute_pointers != 0) {
-            g_lbvh[gID] = LBVHNode(childA, childB, 0, 0, vec4(0), vec4(0));
+            g_lbvh[gID] = LBVHNode(childA, childB, 0, 0, 0, 0, 0, 0, 0);
         } else {
-            g_lbvh[gID] = LBVHNode(childA - int(gID), childB - int(gID), 0, 0, vec4(0), vec4(0));
+            g_lbvh[gID] = LBVHNode(childA - int(gID), childB - int(gID), 0, 0, 0, 0, 0, 0, 0);
         }
         g_lbvh_construction_infos[childA] = LBVHConstructionInfo(gID, 0);
         g_lbvh_construction_infos[childB] = LBVHConstructionInfo(gID, 0);
     }
-    // mode 0 is the root
 
+    // node 0 is the root
     if (gID == 0) {
         g_lbvh_construction_infos[0] = LBVHConstructionInfo(0, 0);
     }
-}
-
-void main() {
-    generateHierarchy();
 }
