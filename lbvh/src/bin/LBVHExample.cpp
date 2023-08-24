@@ -6,24 +6,21 @@
 
 int main() {
 #ifdef RESOURCE_DIRECTORY_PATH
-    std::cout << "RESOURCE_DIRECTORY_PATH=" << RESOURCE_DIRECTORY_PATH << std::endl;
     engine::Paths::m_resourceDirectoryPath = RESOURCE_DIRECTORY_PATH;
 #endif
 
     engine::GPUContext gpu(engine::Queues::QueueFamilies::COMPUTE_FAMILY | engine::Queues::TRANSFER_FAMILY);
 
-    for (uint32_t i = 0; i < 1; i++) {
-        try {
-            gpu.init();
+    try {
+        gpu.init();
 
-            auto app = std::make_shared<engine::LBVH>();
-            app->execute(&gpu);
+        auto app = std::make_shared<engine::LBVH>();
+        app->execute(&gpu);
 
-            gpu.shutdown();
-        } catch (const std::exception &e) {
-            std::cerr << e.what() << std::endl;
-            return EXIT_FAILURE;
-        }
+        gpu.shutdown();
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

@@ -35,7 +35,7 @@ namespace engine {
             return m_activeIndex;
         }
 
-        VkCommandPool m_commandPool{}; // TODO(Mirco): make this a transfer command pool only
+        VkCommandPool m_commandPool{};
 
         void executeCommands(const std::function<void(VkCommandBuffer)> &recordCommands) {
             VkCommandBufferAllocateInfo allocInfo{};

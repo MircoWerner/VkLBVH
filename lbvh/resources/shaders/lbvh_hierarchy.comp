@@ -30,8 +30,6 @@ layout (std430, set = 2, binding = 3) writeonly buffer lbvh_construction_infos {
     LBVHConstructionInfo g_lbvh_construction_infos[];
 };
 
-#define INVALID_POINTER 0x0
-
 int delta(int i, uint codeI, int j) {
     if (j < 0 || j > g_num_elements - 1) {
         return -1;

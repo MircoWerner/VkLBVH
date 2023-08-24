@@ -8,7 +8,9 @@ set(PROJECT_HEADERS
 
 set(PROJECT_SOURCES
         src/bin/LBVHExample.cpp
-        )
+        src/LBVH.cpp
+        src/LBVHPass.cpp
+)
 
 add_executable(lbvhexample ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 
