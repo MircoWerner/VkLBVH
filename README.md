@@ -13,6 +13,7 @@ and inspired by / based on the following repositories and blog posts:
 ## Table of Contents
 - [Example Usage](#example-usage) (reference implementation in Vulkan)
   - [Compile / Run](#compile--run)
+  - [Interesting Files](#interesting-files)
 - [Own Usage](#own-usage) (how to use the LBVH builder / the compute shaders in your own Vulkan project)
   - [Struct Definition](#struct-definition)
   - [Model Loading](#model-loading)
@@ -32,8 +33,10 @@ Requirements: Vulkan, glm
 git clone --recursive git@github.com:MircoWerner/VkLBVH.git
 cd VkLBVH
 mkdir build
+cd build
 cmake ..
 make
+cd lbvh
 ./lbvhexample
 ```
 

@@ -22,12 +22,12 @@ namespace engine {
 
         // push constants
         m_pass->m_pushConstantsMortonCodes.g_num_elements = NUM_ELEMENTS;
-        m_pass->m_pushConstantsMortonCodes.g_min_x = 8 * extent.min.x;
-        m_pass->m_pushConstantsMortonCodes.g_min_y = 8 * extent.min.y;
-        m_pass->m_pushConstantsMortonCodes.g_min_z = 8 * extent.min.z;
-        m_pass->m_pushConstantsMortonCodes.g_max_x = 8 * extent.max.x;
-        m_pass->m_pushConstantsMortonCodes.g_max_y = 8 * extent.max.y;
-        m_pass->m_pushConstantsMortonCodes.g_max_z = 8 * extent.max.z;
+        m_pass->m_pushConstantsMortonCodes.g_min_x = extent.min.x;
+        m_pass->m_pushConstantsMortonCodes.g_min_y = extent.min.y;
+        m_pass->m_pushConstantsMortonCodes.g_min_z = extent.min.z;
+        m_pass->m_pushConstantsMortonCodes.g_max_x = extent.max.x;
+        m_pass->m_pushConstantsMortonCodes.g_max_y = extent.max.y;
+        m_pass->m_pushConstantsMortonCodes.g_max_z = extent.max.z;
         m_pass->m_pushConstantsRadixSort.g_num_elements = NUM_ELEMENTS;
         m_pass->m_pushConstantsHierarchy.g_num_elements = NUM_ELEMENTS;
         m_pass->m_pushConstantsHierarchy.g_absolute_pointers = ABSOLUTE_POINTERS;
