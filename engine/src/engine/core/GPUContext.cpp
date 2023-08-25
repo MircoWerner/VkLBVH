@@ -165,8 +165,13 @@ namespace engine {
             std::cout << "[" << i << "] " << deviceProperties.deviceName << std::endl;
         }
         std::cout << "Enter the number of the device... ";
-        std::string s = "0";
-        std::cout << s << std::endl;
+        std::string s;
+        if (deviceCount == 1) {
+            s = "0";
+            std::cout << s << std::endl;
+        } else {
+            std::cin >> s;
+        }
         int i;
         try {
             i = std::stoi(s);

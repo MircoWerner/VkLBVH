@@ -10,6 +10,8 @@ and inspired by / based on the following repositories and blog posts:
 - [LBVH blog post: Tree Construction on the GPU by Tero Karras](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)
 - [RadixSort implementation: Embree by Intel](https://github.com/embree/embree/blob/v4.0.0-ploc/kernels/rthwif/builder/gpu/sort.h) (radix sort part of LBVH building algorithm)
 
+Tested on Linux with NVIDIA RTX 3070 GPU.
+
 ## Table of Contents
 - [Example Usage](#example-usage) (reference implementation in Vulkan)
   - [Compile / Run](#compile--run)
@@ -101,7 +103,7 @@ Define a vector/array containing `Element` structs for all primitives. This vect
 
 <a name="shaders--compute-pass"></a>
 ### Shaders / Compute Pass
-Copy the following shaders to your project:
+Copy the following [shaders](https://github.com/MircoWerner/VkLBVH/tree/main/lbvh/resources/shaders) to your project:
 ```
 lbvh_morton_codes.comp: assign morton codes to the input elements
 lbvh_single_radixsort.comp: sort the morton codes
