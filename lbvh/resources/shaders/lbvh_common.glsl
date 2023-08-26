@@ -1,3 +1,11 @@
+/**
+* VkLBVH written by Mirco Werner: https://github.com/MircoWerner/VkLBVH
+* Based on:
+* https://research.nvidia.com/sites/default/files/pubs/2012-06_Maximizing-Parallelism-in/karras2012hpg_paper.pdf
+* https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
+* https://github.com/ToruNiina/lbvh
+* https://github.com/embree/embree/blob/v4.0.0-ploc/kernels/rthwif/builder/gpu/sort.h
+*/
 #ifndef LBVH_COMMONG_GLSL
 #define LBVH_COMMONG_GLSL
 
