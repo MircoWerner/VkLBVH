@@ -8,7 +8,8 @@ The implementation is based on the following paper:
 and inspired by / based on the following repositories and blog posts:
 - [LBVH implementation: LBVH in CUDA by ToruNiina](https://github.com/ToruNiina/lbvh)
 - [LBVH blog post: Tree Construction on the GPU by Tero Karras](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/)
-- [RadixSort implementation: Embree by Intel](https://github.com/embree/embree/blob/v4.0.0-ploc/kernels/rthwif/builder/gpu/sort.h) (radix sort part of LBVH building algorithm)
+
+and uses the `single_radixsort` from my [VkRadixSort](https://github.com/MircoWerner/VkRadixSort) repository.
 
 Tested on Linux with NVIDIA RTX 3070 GPU.
 
@@ -22,6 +23,7 @@ Tested on Linux with NVIDIA RTX 3070 GPU.
   - [Shaders / Compute Pass](#shaders--compute-pass)
   - [Buffers](#buffers)
   - [Execute](#execute-)
+- [Screenshot](#screenshot) (visualization of the constructed LBVH)
 
 <a name="example--usage"></a>
 ## Example Usage
@@ -173,3 +175,9 @@ struct PushConstantsBoundingBoxes {
 <a name="execute-"></a>
 ### Execute 
 Execute the compute pass. Wait for the compute queue to idle. The result is in the `m_LBVHBuffer` buffer.
+
+<a name="screenshot"></a>
+## Screenshot
+The example implementation writes the constructed LBVH of the [Stanford Dragon](http://graphics.stanford.edu/data/3Dscanrep/) model to a csv file which, for example, can be visualized with my [BVHVisualization](https://github.com/MircoWerner/BVHVisualization).
+
+![img bvh visualization](https://github.com/MircoWerner/BVHVisualization/blob/main/resources/bvhexample/lbvh_visualization.png?raw=true)
