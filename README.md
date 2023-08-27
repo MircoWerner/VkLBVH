@@ -11,7 +11,10 @@ and inspired by / based on the following repositories and blog posts:
 
 and uses the `single_radixsort` from my [VkRadixSort](https://github.com/MircoWerner/VkRadixSort) repository.
 
-Tested on Linux with NVIDIA RTX 3070 GPU.
+Tested on Linux with NVIDIA RTX 3070 GPU and on Linux with AMD Radeon RX Vega 7 GPU.
+
+## (IMPORTANT) NVIDIA vs. AMD
+The shaders are configured for NVIDIA GPUs. If you are using an AMD GPU, set `SUBGROUP_SIZE=64` in [lbvh_single_radixsort.comp](https://github.com/MircoWerner/VkLBVH/blob/main/lbvh/resources/shaders/lbvh_single_radixsort.comp#L15).
 
 ## Table of Contents
 - [Example Usage](#example-usage) (reference implementation in Vulkan)
